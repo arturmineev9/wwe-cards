@@ -1,6 +1,6 @@
-﻿using WWECardGame.Entities;
+﻿using WWECardsGame.Entities;
 
-namespace WWECardGame;
+namespace WWECardsGame;
 
 internal class Program
 {

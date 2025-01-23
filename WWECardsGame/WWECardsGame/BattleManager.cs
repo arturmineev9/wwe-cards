@@ -1,7 +1,7 @@
-using WWECardGame.Entities;
-using WWECardGame.Enum;
+using WWECardsGame.Entities;
+using WWECardsGame.Enum;
 
-namespace WWECardGame;
+namespace WWECardsGame;
 
 internal class BattleManager(List<Card> player1Deck, List<Card> player2Deck)
 {

@@ -1,4 +1,4 @@
-namespace WWECardGame.Entities;
+namespace WWECardsGame.Entities;
 
 class Card
 {

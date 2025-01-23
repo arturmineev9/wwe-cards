@@ -1,4 +1,4 @@
-namespace WWECardGame.Enum;
+namespace WWECardsGame.Enum;
 
 enum BattleType
 {
