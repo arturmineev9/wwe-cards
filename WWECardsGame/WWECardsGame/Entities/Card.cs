@@ -1,6 +1,6 @@
 namespace WWECardsGame.Entities;
 
-class Card
+public class Card
 {
     public string Name { get; }
     public string Gender { get; }
@@ -40,3 +40,4 @@ class Card
     
     
 }
+

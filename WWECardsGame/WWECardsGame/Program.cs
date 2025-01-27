@@ -41,7 +41,5 @@ internal class Program
         // Можно добавить игровой цикл здесь
         Thread.Sleep(2000);
         
-        BattleManager battleManager = new BattleManager(player1Deck, player2Deck);
-        battleManager.StartBattle();
     }
 }
