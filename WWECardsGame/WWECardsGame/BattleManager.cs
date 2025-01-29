@@ -5,142 +5,152 @@ using WWECardsGame.Enum;
 
 namespace WWECardsGame;
 
-// Класс BattleManager управляет логикой боя между двумя игроками.
-public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socket player1Socket, Socket player2Socket)
+public class BattleManager
 {
-    // Основной метод, запускающий бой между двумя игроками.
+    // Колоды карт для каждого игрока
+    private readonly List<Card> player1Deck;
+    private readonly List<Card> player2Deck;
+
+    // Сокеты для обмена данными с игроками
+    private readonly Socket player1Socket;
+    private readonly Socket player2Socket;
+
+    // Конструктор для инициализации колод и сокетов
+    public BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socket player1Socket, Socket player2Socket)
+    {
+        this.player1Deck = player1Deck;
+        this.player2Deck = player2Deck;
+        this.player1Socket = player1Socket;
+        this.player2Socket = player2Socket;
+    }
+
+    // Основной метод для начала битвы
     public async Task StartBattleAsync()
     {
-        // Отправка списка карт каждому игроку.
-        await SendToPlayerAsync(player1Socket, $"Ваши карты:\n{ConvertCardsToString(player1Deck)}\n");
-        await SendToPlayerAsync(player2Socket, $"Ваши карты:\n{ConvertCardsToString(player2Deck)}\n");
-        
-        int player1Wins = 0; // Счётчик побед первого игрока.
-        int player2Wins = 0; // Счётчик побед второго игрока.
+        // Отправляем каждому игроку его колоду карт
+        await SendToPlayerAsync(player1Socket, Protocol.CARDS, ConvertCardsToString(player1Deck));
+        await SendToPlayerAsync(player2Socket, Protocol.CARDS, ConvertCardsToString(player2Deck));
 
-        // Основной цикл боя, состоящий из 3 раундов.
+        // Ждем подтверждения готовности от обоих игроков
+        await WaitForConfirmation(player1Socket, Protocol.READY);
+        await WaitForConfirmation(player2Socket, Protocol.READY);
+
+        // Счетчики побед для каждого игрока
+        int player1Wins = 0;
+        int player2Wins = 0;
+
+        // Основной цикл для проведения 3 раундов
         for (var round = 1; round <= 3; round++)
         {
             Console.WriteLine($"\nРаунд {round}:");
 
-            // Определение случайного типа боя (например, одиночный мужской или женский).
+            // Определяем тип битвы и атрибуты для сравнения
             BattleType battleType = GetRandomBattleType();
-            Console.WriteLine($"\nРаунд {round}:\nТип боя: {battleType}\n");
-
-            // Выбор случайных атрибутов для сравнения карт.
             string attribute1 = GetRandomAttribute();
             string? attribute2 = GetRandomAttribute();
-            if (attribute1 == attribute2) attribute2 = null; // Если атрибуты совпали, второй атрибут не используется.
+            if (attribute1 == attribute2) attribute2 = null;
 
-            Console.WriteLine(attribute2 == null
-                ? $"Выбранный атрибут: {attribute1}"
-                : $"Выбранные атрибуты: {attribute1}, {attribute2}");
-
-            // Уведомление игроков о типе боя и выбранных атрибутах.
+            // Уведомляем игроков о начале раунда и атрибутах
             await NotifyPlayersAsync(battleType, attribute1, attribute2);
 
-            // Получение выбора карт от обоих игроков.
+            // Получаем выбор карт от каждого игрока
             var results = await Task.WhenAll(
                 GetPlayerSelectionAsync(player1Deck, battleType, player1Socket, player2Socket),
                 GetPlayerSelectionAsync(player2Deck, battleType, player2Socket, player1Socket)
             );
 
-            var player1Selection = results[0]; // Выбор карт первого игрока.
-            var player2Selection = results[1]; // Выбор карт второго игрока.
+            var player1Selection = results[0];
+            var player2Selection = results[1];
 
-            // Подсчёт очков на основе выбранных карт и атрибутов.
+            // Вычисляем очки для каждого игрока на основе выбранных карт и атрибутов
             int player1Score = CalculateScore(player1Selection, attribute1, attribute2);
             int player2Score = CalculateScore(player2Selection, attribute1, attribute2);
 
             Console.WriteLine($"Очки Игрока 1: {player1Score} | Очки Игрока 2: {player2Score}");
-            await NotifyRoundResultsAsync(player1Score, player2Score); // Уведомление игроков о результатах раунда.
+            await NotifyRoundResultsAsync(player1Score, player2Score);
 
-            // Определение победителя раунда и обновление счётчиков побед.
+            // Определяем победителя раунда и обновляем счетчики побед
             DetermineRoundWinner(ref player1Wins, ref player2Wins, player1Score, player2Score);
         }
 
-        // Определение победителя всего боя.
+        // Определяем победителя всей битвы
         DetermineBattleWinner(player1Wins, player2Wins);
     }
 
-    // Метод для уведомления игроков о типе боя и выбранных атрибутах.
+    // Метод для уведомления игроков о начале раунда и атрибутах
     private async Task NotifyPlayersAsync(BattleType battleType, string attribute1, string? attribute2)
     {
         string message = attribute2 == null
-            ? $"Тип боя: {battleType}, Атрибут: {attribute1}"
-            : $"Тип боя: {battleType}, Атрибуты: {attribute1}, {attribute2}";
+            ? $"{Protocol.ROUND_START} {battleType} {attribute1}"
+            : $"{Protocol.ROUND_START} {battleType} {attribute1} {attribute2}";
 
         await Task.WhenAll(
             SendToPlayerAsync(player1Socket, message),
             SendToPlayerAsync(player2Socket, message)
         );
+
+        // Ждем подтверждения готовности от обоих игроков
+        await WaitForConfirmation(player1Socket, Protocol.ROUND_READY);
+        await WaitForConfirmation(player2Socket, Protocol.ROUND_READY);
     }
 
-    // Метод для получения выбора карт от игрока.
+    // Метод для получения выбора карты от игрока
     private async Task<List<Card>> GetPlayerSelectionAsync(List<Card> deck, BattleType battleType, Socket playerSocket, Socket opponentSocket)
     {
-        // Фильтрация карт, подходящих для текущего типа боя.
+        // Фильтруем карты, которые подходят для текущего типа битвы
         List<Card> validCards = deck.FindAll(c => IsValidCardForBattle(c, battleType));
         if (validCards.Count == 0)
         {
-            await SendToPlayerAsync(playerSocket, "У вас нет подходящих карт для этого боя.");
+            // Если подходящих карт нет, уведомляем игрока
+            await SendToPlayerAsync(playerSocket, Protocol.NO_CARDS);
             return new List<Card>();
         }
 
-        // Отправка игроку списка доступных карт.
-        await SendToPlayerAsync(playerSocket, "Выберите карту для боя:");
-        for (int i = 0; i < validCards.Count; i++)
+        // Отправляем игроку список подходящих карт
+        await SendToPlayerAsync(playerSocket, Protocol.SELECT_CARD, ConvertCardsToString(validCards));
+        string response = await ReceiveFromPlayerWithTimeoutAsync(playerSocket);
+
+        // Обрабатываем выбор игрока
+        if (response.StartsWith(Protocol.SELECT))
         {
-            await SendToPlayerAsync(playerSocket, $"{i + 1}: {validCards[i]}\n");
+            int choice = int.Parse(response.Split(" ")[1]) - 1;
+            return new List<Card> { validCards[choice] };
         }
 
-        // Получение выбора игрока.
-        int choice = int.Parse(await ReceiveFromPlayerAsync(playerSocket)) - 1;
-        List<Card> selected = new() { validCards[choice] };
-
-        // Если тип боя требует выбора второй карты, запрашиваем её.
-        if (battleType == BattleType.MaleTagTeam || battleType == BattleType.FemaleTagTeam)
-        {
-            await SendToPlayerAsync(playerSocket, "Выберите вторую карту для боя:");
-            choice = int.Parse(await ReceiveFromPlayerAsync(playerSocket)) - 1;
-            selected.Add(validCards[choice]);
-        }
-
-        // Уведомление игрока о том, что нужно ждать выбора противника.
-        await SendToPlayerAsync(playerSocket, "Ожидайте, пока противник сделает выбор...");
-
-        // Уведомление противника о том, что первый игрок уже сделал выбор.
-        await SendToPlayerAsync(opponentSocket, "Противник уже сделал выбор. Ваш ход!");
-
-        return selected;
+        return new List<Card>();
     }
 
-    // Метод для отправки сообщения игроку через сокет.
-    private static async Task SendToPlayerAsync(Socket playerSocket, string message)
+    // Метод для отправки сообщения игроку
+    private static async Task SendToPlayerAsync(Socket playerSocket, string command, string message = "")
     {
-        byte[] messageBytes = Encoding.UTF8.GetBytes(message);
+        string fullMessage = $"{command} {message}".Trim();
+        byte[] messageBytes = Encoding.UTF8.GetBytes(fullMessage);
         await playerSocket.SendAsync(messageBytes, SocketFlags.None);
     }
 
-    // Метод для получения сообщения от игрока через сокет.
-    private static async Task<string> ReceiveFromPlayerAsync(Socket playerSocket)
+    // Метод для получения ответа от игрока с таймаутом
+    private static async Task<string> ReceiveFromPlayerWithTimeoutAsync(Socket playerSocket, int timeoutSeconds = 30)
     {
         byte[] buffer = new byte[256];
-        int bytesReceived = await playerSocket.ReceiveAsync(buffer, SocketFlags.None);
-        return Encoding.UTF8.GetString(buffer, 0, bytesReceived);
+        var task = playerSocket.ReceiveAsync(buffer, SocketFlags.None);
+        if (await Task.WhenAny(task, Task.Delay(timeoutSeconds * 1000)) == task)
+        {
+            return Encoding.UTF8.GetString(buffer, 0, task.Result);
+        }
+        return Protocol.TIMEOUT;
     }
 
-    // Метод для уведомления игроков о результатах раунда.
+    // Метод для уведомления игроков о результатах раунда
     private async Task NotifyRoundResultsAsync(int player1Score, int player2Score)
     {
-        string message = $"Очки Игрока 1: {player1Score} | Очки Игрока 2: {player2Score}";
+        string message = $"{Protocol.ROUND_RESULT} {player1Score} {player2Score}";
         await Task.WhenAll(
             SendToPlayerAsync(player1Socket, message),
             SendToPlayerAsync(player2Socket, message)
         );
     }
 
-    // Метод для выбора случайного типа боя.
+    // Метод для случайного выбора типа битвы
     private static BattleType GetRandomBattleType()
     {
         Random rand = new Random();
@@ -148,7 +158,7 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
         return values[rand.Next(values.Length)];
     }
 
-    // Метод для выбора случайного атрибута.
+    // Метод для случайного выбора атрибута
     private static string GetRandomAttribute()
     {
         string[] attributes = { "Strength", "Toughness", "Endurance", "Charisma" };
@@ -156,63 +166,52 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
         return attributes[rand.Next(attributes.Length)];
     }
 
-    // Метод для проверки, подходит ли карта для текущего типа боя.
+    // Метод для проверки, подходит ли карта для текущего типа битвы
     private static bool IsValidCardForBattle(Card card, BattleType battleType)
     {
         return (battleType == BattleType.MaleSingle || battleType == BattleType.MaleTagTeam) && card.Gender == "Male" ||
                (battleType == BattleType.FemaleSingle || battleType == BattleType.FemaleTagTeam) && card.Gender == "Female";
     }
 
-    // Метод для подсчёта очков на основе выбранных карт и атрибутов.
+    // Метод для вычисления очков на основе выбранных карт и атрибутов
     private int CalculateScore(List<Card> cards, string attr1, string? attr2 = null)
     {
         int score = 0;
         foreach (var card in cards)
         {
             score += card.GetAttribute(attr1);
-            if (attr2 != null)
-            {
-                score += card.GetAttribute(attr2);
-            }
+            if (attr2 != null) score += card.GetAttribute(attr2);
         }
         return score;
     }
 
-    // Метод для определения победителя раунда и обновления счётчиков побед.
+    // Метод для определения победителя раунда
     private static void DetermineRoundWinner(ref int player1Wins, ref int player2Wins, int player1Score, int player2Score)
     {
-        if (player1Score > player2Score)
-        {
-            Console.WriteLine("Игрок 1 выигрывает раунд!");
-            player1Wins++;
-        }
-        else if (player2Score > player1Score)
-        {
-            Console.WriteLine("Игрок 2 выигрывает раунд!");
-            player2Wins++;
-        }
-        else
-        {
-            Console.WriteLine("Ничья!");
-        }
+        if (player1Score > player2Score) player1Wins++;
+        else if (player2Score > player1Score) player2Wins++;
     }
 
-    // Метод для определения победителя всего боя.
+    // Метод для определения победителя всей битвы
     private static void DetermineBattleWinner(int player1Wins, int player2Wins)
     {
         Console.WriteLine("\nИтог игры:");
-        if (player1Wins > player2Wins)
-            Console.WriteLine("Игрок 1 - Победитель!");
-        else if (player2Wins > player1Wins)
-            Console.WriteLine("Игрок 2 - Победитель!");
-        else
-            Console.WriteLine("Игра окончилась вничью!");
+        Console.WriteLine(player1Wins > player2Wins ? "Игрок 1 - Победитель!" : player2Wins > player1Wins ? "Игрок 2 - Победитель!" : "Ничья!");
     }
 
-    // Метод для преобразования списка карт в строку для отображения.
+    // Метод для преобразования списка карт в строку
     private static string ConvertCardsToString(List<Card> cards)
     {
-        return string.Join("\n", cards.Select((card, index) =>
-            $"{index + 1}. {card.Name.Trim()} - Strength: {card.Strength}, Toughness: {card.Toughness}, Endurance: {card.Endurance}, Charisma: {card.Charisma}"));
+        return string.Join("\n", cards.Select((card, index) => $"{index + 1}. {card.Name.Trim()} - Strength: {card.Strength}, Toughness: {card.Toughness}, Endurance: {card.Endurance}, Charisma: {card.Charisma}"));
+    }
+
+    // Метод для ожидания подтверждения от игрока
+    private async Task WaitForConfirmation(Socket playerSocket, string expectedCommand)
+    {
+        string response = await ReceiveFromPlayerWithTimeoutAsync(playerSocket);
+        if (response != expectedCommand)
+        {
+            await SendToPlayerAsync(playerSocket, Protocol.ERROR, "Неверный ответ");
+        }
     }
 }
