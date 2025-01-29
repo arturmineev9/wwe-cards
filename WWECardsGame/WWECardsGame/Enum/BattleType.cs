@@ -1,6 +1,6 @@
 namespace WWECardsGame.Enum;
 
-enum BattleType
+public enum BattleType
 {
     MaleSingle,
     MaleTagTeam,
