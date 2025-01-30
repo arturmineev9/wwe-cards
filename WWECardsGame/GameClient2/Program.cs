@@ -5,7 +5,7 @@ using WWECardsGame;
 
 class Program
 {
-    private static bool _isWaitingForCardSelection = false;
+    private static bool isWaitingForCardSelection = false;
 
     static async Task Main(string[] args)
     {
@@ -45,12 +45,12 @@ class Program
 
             if (!string.IsNullOrWhiteSpace(input))
             {
-                if (_isWaitingForCardSelection)
+                if (isWaitingForCardSelection)
                 {
                     // Если ожидается выбор карты, отправляем выбор на сервер
                     await SendMessageAsync(clientSocket,
                         $"{Protocol.PLAYER_SELECTED} {input}"); // Передаем сокет в метод
-                    _isWaitingForCardSelection = false; // Сбрасываем флаг
+                    isWaitingForCardSelection = false; // Сбрасываем флаг
                 }
                 else
                 {
@@ -61,7 +61,7 @@ class Program
         }
     }
 
-    static Task HandleServerMessage(string message)
+    static async Task HandleServerMessage(string message)
     {
         string[] parts = message.Split(' ');
 
@@ -79,14 +79,14 @@ class Program
                 break;
 
             case "SELECT_CARDS":
-                var validCards = message.Substring(Protocol.SELECT_CARDS.Length + 1).Split('|');
+                string[] validCards = message.Substring(Protocol.SELECT_CARDS.Length + 1).Split('|');
                 foreach (string card in validCards)
                 {
                     Console.WriteLine(card.Trim());
                 }
 
                 Console.Write("Выберите карту (номер): ");
-                _isWaitingForCardSelection = true; // Устанавливаем флаг ожидания выбора
+                isWaitingForCardSelection = true; // Устанавливаем флаг ожидания выбора
                 break;
 
             case "ROUND_START":
@@ -98,39 +98,35 @@ class Program
                 break;
 
             case "GAME_RESULT":
-                Console.WriteLine($"Итоги игры: {message.Substring(Protocol.GAME_RESULT.Length + 1)}");
-                Console.WriteLine("Игра окончена.");
+                Console.WriteLine($"Игра окончена: {parts[1]}");
                 Environment.Exit(0);
                 break;
 
             case "READY":
-                Console.WriteLine(_isWaitingForCardSelection
-                    ? "Противник выбрал карту. Ваш ход!"
-                    : "Ожидайте соперника...");
-
+                Console.WriteLine(isWaitingForCardSelection ? "Противник выбрал. Ваш ход!" : "Ожидайте соперника...");
                 break;
+            
             case "ERROR":
                 Console.WriteLine("Ошибка!");
                 break;
+            
 
             default:
                 Console.WriteLine($"Неизвестное сообщение: {message}");
                 break;
         }
-
-        return Task.CompletedTask;
     }
 
     static async Task<string> ReceiveMessageAsync(Socket clientSocket)
     {
-        var buffer = new byte[1024];
-        var bytesReceived = await clientSocket.ReceiveAsync(buffer, SocketFlags.None);
+        byte[] buffer = new byte[1024];
+        int bytesReceived = await clientSocket.ReceiveAsync(buffer, SocketFlags.None);
         return Encoding.UTF8.GetString(buffer, 0, bytesReceived).Trim();
     }
 
     static async Task SendMessageAsync(Socket clientSocket, string message)
     {
-        var messageBytes = Encoding.UTF8.GetBytes(message + "\n");
+        byte[] messageBytes = Encoding.UTF8.GetBytes(message + "\n");
         await clientSocket.SendAsync(messageBytes, SocketFlags.None);
     }
 }

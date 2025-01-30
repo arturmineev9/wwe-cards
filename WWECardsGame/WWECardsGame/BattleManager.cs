@@ -39,7 +39,7 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
             DetermineRoundWinner(ref player1Wins, ref player2Wins, player1Score, player2Score);
         }
 
-        DetermineBattleWinner(player1Wins, player2Wins);
+        await DetermineBattleWinnerAsync(player1Wins, player2Wins, player1Socket, player2Socket);
     }
 
     // Метод для подсчёта очков на основе выбранных карт и атрибутов.
@@ -136,9 +136,16 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
         else if (player2Score > player1Score) player2Wins++;
     }
 
-    private static void DetermineBattleWinner(int player1Wins, int player2Wins)
+    private static async Task DetermineBattleWinnerAsync(int player1Wins, int player2Wins, Socket player1Socket, Socket player2Socket)
     {
-        string result = player1Wins > player2Wins ? "WIN" : player2Wins > player1Wins ? "LOSE" : "DRAW";
+        // Определяем результат игры
+        string result = player1Wins > player2Wins ? "Player 1 won" : player2Wins > player1Wins ? "Player 2 won" : "DRAW";
+
+        // Отправляем результат игрокам
+        await SendToPlayerAsync(player1Socket, Protocol.GAME_RESULT, result);
+        await SendToPlayerAsync(player2Socket, Protocol.GAME_RESULT, result);
+
+        // Выводим результат в консоль сервера (для отладки)
         Console.WriteLine($"Итог игры: {result}");
     }
 
