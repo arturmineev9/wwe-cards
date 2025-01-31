@@ -9,6 +9,10 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
 {
     public async Task StartBattleAsync()
     {
+        
+        await SendToPlayerAsync(player1Socket, Protocol.PLAYER_NUMBER, "Вы - Игрок №1");
+        await SendToPlayerAsync(player2Socket, Protocol.PLAYER_NUMBER, "Вы - Игрок №2");
+        
         await SendToPlayerAsync(player1Socket, Protocol.CARDS, ConvertCardsToString(player1Deck));
         await SendToPlayerAsync(player2Socket, Protocol.CARDS, ConvertCardsToString(player2Deck));
         
@@ -107,8 +111,8 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
             }
         }
 
-        //await SendToPlayerAsync(playerSocket, Protocol.READY, "Ожидайте соперника...");
-        //await SendToPlayerAsync(opponentSocket, Protocol.READY, "Противник выбрал. Ваш ход!");
+        await SendToPlayerAsync(playerSocket, Protocol.READY, "Ожидайте соперника...");
+        await SendToPlayerAsync(opponentSocket, Protocol.READY, "Противник выбрал. Ваш ход!");
 
         return selected;
     }
@@ -132,7 +136,12 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
 
     private async Task NotifyRoundResultsAsync(int player1Score, int player2Score)
     {
-        string message = $"Player1: {player1Score}, Player2: {player2Score}";
+
+        var winnerPlayer = player1Score > player2Score ? "Игрок №1" :
+            player1Score < player2Score ? "Игрок №2" : "Ничья";
+
+        
+        var message = $"Игрок 1: {player1Score}, Игрок 2: {player2Score}\nПобедитель раунда: {winnerPlayer}";
         await Task.WhenAll(
             SendToPlayerAsync(player1Socket, Protocol.ROUND_RESULT, message),
             SendToPlayerAsync(player2Socket, Protocol.ROUND_RESULT, message)
@@ -148,7 +157,7 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
     private static async Task DetermineBattleWinnerAsync(int player1Wins, int player2Wins, Socket player1Socket, Socket player2Socket)
     {
         // Определяем результат игры
-        string result = player1Wins > player2Wins ? "Player 1 won" : player2Wins > player1Wins ? "Player 2 won" : "DRAW";
+        string result = player1Wins > player2Wins ? "Игрок 1 победил!" : player2Wins > player1Wins ? "Игрок 2 победил!" : "Ничья!";
 
         // Отправляем результат игрокам
         await SendToPlayerAsync(player1Socket, Protocol.GAME_RESULT, result);
@@ -162,17 +171,17 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
     {
         return string.Join("|", deck.Select((card, index) =>
             $"{index + 1}. {card.Name} - " +
-            $"Strength: {card.Strength}, " +
-            $"Toughness: {card.Toughness}, " +
-            $"Endurance: {card.Endurance}, " +
-            $"Charisma: {card.Charisma}"
+            $"Сила: {card.Strength}, " +
+            $"Жесткость: {card.Toughness}, " +
+            $"Выносливость: {card.Endurance}, " +
+            $"Харизма: {card.Charisma}"
         ));
     }
 
 
     private static BattleType GetRandomBattleType() => new Random().Next(2) == 0 ? BattleType.MaleSingle : BattleType.FemaleSingle;
 
-    private static string GetRandomAttribute() => new[] { "Strength", "Toughness", "Endurance", "Charisma" }[new Random().Next(4)];
+    private static string GetRandomAttribute() => new[] { "Сила", "Жесткость", "Выносливость", "Харизма" }[new Random().Next(4)];
 
     private static bool IsValidCardForBattle(Card card, BattleType battleType)
     {

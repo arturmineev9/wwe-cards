@@ -23,10 +23,10 @@ public class Card
     {
         return attribute switch
         {
-            "Strength" => Strength,
-            "Toughness" => Toughness,
-            "Endurance" => Endurance,
-            "Charisma" => Charisma,
+            "Сила" => Strength,
+            "Жесткость" => Toughness,
+            "Выносливость" => Endurance,
+            "Харизма" => Charisma,
             _ => 0
         };
     }

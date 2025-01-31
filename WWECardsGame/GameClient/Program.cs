@@ -67,26 +67,30 @@ class Program
 
         switch (parts[0])
         {
+            case "PLAYER_NUMBER":
+                Console.WriteLine(message.Substring(Protocol.PLAYER_NUMBER.Length + 1) + "\n");
+                break;
             case "CARDS":
                 Console.WriteLine("Ваши карты:");
-                string[] cards = message.Substring(Protocol.CARDS.Length + 1)
+                var cards = message.Substring(Protocol.CARDS.Length + 1)
                     .Split('|'); // Пропускаем "CARDS " и делим по "|"
                 foreach (string card in cards)
                 {
                     Console.WriteLine(card.Trim());
                 }
-
+                Console.WriteLine();
                 break;
 
             case "SELECT_CARDS":
                 var validCards = message.Substring(Protocol.SELECT_CARDS.Length + 1).Split('|');
-                
+
+                Console.WriteLine("Ваши карты для раунда:");
                 foreach (string card in validCards)
                 {
                     Console.WriteLine(card.Trim());
                 }
 
-                Console.Write("Выберите карту (номер): ");
+                Console.Write("\nВыберите карту (номер): ");
                 _isWaitingForCardSelection = true; // Устанавливаем флаг ожидания выбора
                 break;
 
@@ -95,7 +99,7 @@ class Program
                 break;
 
             case "ROUND_RESULT":
-                Console.WriteLine($"Результаты раунда: {string.Join(' ', parts[1..])}");
+                Console.WriteLine($"\nРезультаты раунда: {string.Join(' ', parts[1..])}\n");
                 break;
 
             case "GAME_RESULT":
@@ -126,7 +130,7 @@ class Program
     {
         var buffer = new byte[1024];
         var bytesReceived = await clientSocket.ReceiveAsync(buffer, SocketFlags.None);
-        Console.WriteLine($"Получено сообщение от сервера: {Encoding.UTF8.GetString(buffer, 0, bytesReceived).Trim()}");
+        //Console.WriteLine($"Получено сообщение от сервера: {Encoding.UTF8.GetString(buffer, 0, bytesReceived).Trim()}");
         return Encoding.UTF8.GetString(buffer, 0, bytesReceived).Trim();
     }
 

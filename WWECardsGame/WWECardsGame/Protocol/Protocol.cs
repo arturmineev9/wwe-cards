@@ -2,6 +2,7 @@ namespace WWECardsGame;
 
 public static class Protocol
 {
+    public const string PLAYER_NUMBER = "PLAYER_NUMBER";
     public const string CARDS = "CARDS";
     public const string READY = "READY";
     public const string ROUND_START = "ROUND_START";
