@@ -80,6 +80,7 @@ class Program
 
             case "SELECT_CARDS":
                 var validCards = message.Substring(Protocol.SELECT_CARDS.Length + 1).Split('|');
+                
                 foreach (string card in validCards)
                 {
                     Console.WriteLine(card.Trim());
@@ -125,6 +126,7 @@ class Program
     {
         var buffer = new byte[1024];
         var bytesReceived = await clientSocket.ReceiveAsync(buffer, SocketFlags.None);
+        Console.WriteLine($"Получено сообщение от сервера: {Encoding.UTF8.GetString(buffer, 0, bytesReceived).Trim()}");
         return Encoding.UTF8.GetString(buffer, 0, bytesReceived).Trim();
     }
 

@@ -60,12 +60,17 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
     
     private async Task NotifyPlayersAsync(BattleType battleType, string attribute1, string? attribute2)
     {
-        string message = attribute2 == null ? $"{battleType} {attribute1}" : $"{battleType} {attribute1},{attribute2}";
-        await Task.WhenAll(
-            SendToPlayerAsync(player1Socket, Protocol.ROUND_START, message),
-            SendToPlayerAsync(player2Socket, Protocol.ROUND_START, message)
-        );
+        string message = attribute2 == null 
+            ? $"{battleType} {attribute1}" 
+            : $"{battleType} {attribute1},{attribute2}";
+
+        await SendToPlayerAsync(player1Socket, Protocol.ROUND_START, message);
+        await SendToPlayerAsync(player2Socket, Protocol.ROUND_START, message);
+
+        await Task.Delay(50); // Даем клиенту время обработать команду
     }
+
+
 
     private async Task<List<Card>> GetPlayerSelectionAsync(List<Card> deck, BattleType battleType, Socket playerSocket, Socket opponentSocket)
     {
@@ -75,8 +80,11 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
             await SendToPlayerAsync(playerSocket, Protocol.NO_CARDS, "У вас нет подходящих карт.");
             return new List<Card>();
         }
-
+        
         await SendToPlayerAsync(playerSocket, Protocol.SELECT_CARDS, ConvertCardsToString(validCards));
+
+        await Task.Delay(50); // Даем клиенту время обработать SELECT_CARDS
+
         var (command, data) = await ReceiveFromPlayerAsync(playerSocket);
         Console.WriteLine($"Получено сообщение: {command} {data}");
         if (command != Protocol.PLAYER_SELECTED || !int.TryParse(data, out int choice) || choice < 1 || choice > validCards.Count)
@@ -99,18 +107,19 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
             }
         }
 
-        await SendToPlayerAsync(playerSocket, Protocol.READY, "Ожидайте соперника...");
-        await SendToPlayerAsync(opponentSocket, Protocol.READY, "Противник выбрал. Ваш ход!");
+        //await SendToPlayerAsync(playerSocket, Protocol.READY, "Ожидайте соперника...");
+        //await SendToPlayerAsync(opponentSocket, Protocol.READY, "Противник выбрал. Ваш ход!");
 
         return selected;
     }
 
     private static async Task SendToPlayerAsync(Socket playerSocket, string command, string message = "")
     {
-        string fullMessage = $"{command} {message}".Trim();
+        string fullMessage = $"{command} {message}".Trim() + "\n"; // Добавляем \n
         byte[] messageBytes = Encoding.UTF8.GetBytes(fullMessage);
         await playerSocket.SendAsync(messageBytes, SocketFlags.None);
     }
+
 
     private static async Task<(string command, string data)> ReceiveFromPlayerAsync(Socket playerSocket)
     {
