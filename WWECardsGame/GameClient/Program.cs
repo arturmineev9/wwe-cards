@@ -71,7 +71,6 @@ class Program
                 Console.WriteLine(message.Substring(Protocol.PLAYER_NUMBER.Length + 1) + "\n");
                 break;
             case "CARDS":
-                Console.WriteLine("Ваши карты:");
                 var cards = message.Substring(Protocol.CARDS.Length + 1)
                     .Split('|'); // Пропускаем "CARDS " и делим по "|"
                 foreach (string card in cards)
@@ -83,8 +82,7 @@ class Program
 
             case "SELECT_CARDS":
                 var validCards = message.Substring(Protocol.SELECT_CARDS.Length + 1).Split('|');
-
-                Console.WriteLine("Ваши карты для раунда:");
+                
                 foreach (string card in validCards)
                 {
                     Console.WriteLine(card.Trim());
