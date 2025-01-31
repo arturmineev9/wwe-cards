@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using System.Text;
+using GameServer;
 using WWECardsGame.Entities;
 using WWECardsGame.Enum;
 

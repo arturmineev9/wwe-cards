@@ -1,4 +1,4 @@
-namespace WWECardsGame;
+namespace GameServer;
 
 public static class Protocol
 {
