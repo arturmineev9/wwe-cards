@@ -187,7 +187,7 @@ public class BattleManager(List<Card> player1Deck, List<Card> player2Deck, Socke
         Random rand = new Random();
         BattleType[] values =
         [
-            BattleType.MaleSingle, BattleType.FemaleSingle, BattleType.FemaleTagTeam, BattleType.FemaleTagTeam
+            BattleType.MaleSingle, BattleType.FemaleSingle, BattleType.MaleTagTeam, BattleType.FemaleTagTeam
         ];
         return values[rand.Next(values.Length)];
     }
